@@ -115,7 +115,7 @@ double keyShowTime = 0.2f;
 double lastKeyPressTime = 0.0;
 float currentRotation = 0.0f; // Current rotation angle in degrees
 float targetRotation = 0.0f;  // Target rotation angle in degrees
-float rotationTime = 0.2f;
+float rotationTime = 0.15f;
 int curScore = 0;
 bool gameOver = false;
 string pressedKey = "H";
@@ -941,7 +941,11 @@ void rotateCam(GLFWwindow *window)
     {
         return;
     }
-    double degrees = fmin(1.0f, deltaTime / rotationTime) * (targetRotation - currentRotation);
+    double degrees = (deltaTime / rotationTime) * (targetRotation - currentRotation);
+    double sign = glm::sign(degrees);
+    degrees = sign * round(abs(degrees));
+    if (degrees == 0)
+        degrees = sign;
     currentRotation += degrees;
 
     float angleInRadians = glm::radians(degrees);
