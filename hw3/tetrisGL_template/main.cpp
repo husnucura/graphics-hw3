@@ -575,6 +575,16 @@ void drawFloor(float floor_y_scale)
     glUniform3fv(kdLoc[0], 1, glm::value_ptr(kdCubes));
     updateModelingMatrixesInShaders(tmpModelingMat);
 }
+float calculateTextWidth(const std::string &text, float scale)
+{
+    float width = 0.0f;
+    for (const char &c : text)
+    {
+        Character ch = Characters[c];
+        width += (ch.Advance >> 6) * scale;
+    }
+    return width;
+}
 
 void renderText(const std::string &text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color)
 {
@@ -765,15 +775,19 @@ void display()
         }
         lastFallTime = currentTime;
     }
-    renderText("score:" + to_string(curScore), gWidth - 130, gHeight - 30, 0.65, glm::vec3(0, 1, 0));
-    renderText(vievStrings[curRightVecIndex], 10, gHeight - 30, 0.65, glm::vec3(0, 1, 0));
+    float hor_scale = 0.005;
+    string score_string = std::to_string(curScore);
+    float score_scale = 0.65;
+    int text_width = calculateTextWidth(score_string, score_scale);
+    renderText("Score:" + score_string, gWidth * hor_scale + 500 - text_width, gHeight * hor_scale + 960, score_scale, glm::vec3(0, 1, 0));
+    renderText(vievStrings[curRightVecIndex], gWidth * hor_scale, gHeight * hor_scale + 960, score_scale, glm::vec3(0, 1, 0));
     if (!gameOver && currentTime < lastKeyPressTime + keyShowTime)
     {
-        renderText(pressedKey, 10, gHeight - 30 - 30, 0.65, glm::vec3(0, 1, 1));
+        renderText(pressedKey, gWidth * hor_scale, gHeight * hor_scale + 920, 0.65, glm::vec3(0, 1, 1));
     }
     if (gameOver)
     {
-        renderText("GAME OVER!", gWidth / 2 - 135, gHeight / 2, 1.31, glm::vec3(0.52, 0.31, 0.69));
+        renderText("GAME OVER!", gWidth * hor_scale + 120, gHeight * hor_scale + 450, 1.31, glm::vec3(0.52, 0.31, 0.69));
     }
 
     assert(glGetError() == GL_NO_ERROR);
@@ -923,7 +937,7 @@ void keyboard(GLFWwindow *window, int key, int scancode, int action, int mods)
 void rotateCam(GLFWwindow *window)
 {
 
-    if (fabs(targetRotation - currentRotation) < 1e-6)
+    if (fabs(targetRotation - currentRotation) < 1)
     {
         return;
     }
