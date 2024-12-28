@@ -120,6 +120,29 @@ int curScore = 0;
 bool gameOver = false;
 string pressedKey = "H";
 
+std::vector<std::vector<int>> unitCubePositions = {
+    {0, 0, 0}, {0, 0, 1}, {0, 0, 2}, {0, 1, 0}, {0, 1, 1}, {0, 1, 2}, {0, 2, 0}, {0, 2, 1}, {0, 2, 2},
+
+    {1, 0, 0},
+    {1, 0, 1},
+    {1, 0, 2},
+    {1, 1, 0},
+    {1, 1, 1},
+    {1, 1, 2},
+    {1, 2, 0},
+    {1, 2, 1},
+    {1, 2, 2},
+
+    {2, 0, 0},
+    {2, 0, 1},
+    {2, 0, 2},
+    {2, 1, 0},
+    {2, 1, 1},
+    {2, 1, 2},
+    {2, 2, 0},
+    {2, 2, 1},
+    {2, 2, 2}};
+
 glm::mat4
 getModelingMatrix(const glm::mat4 &baseMatrix, const UnitCube &unitCube, float cubeSize)
 {
@@ -723,56 +746,64 @@ void display()
         draw3x3x3CubeGrid(curpos);
 
     drawFloor(floor_y_scale);
-    if (fallSpeed != 0.0 && currentTime > lastFallTime + fallInterval)
+    bool isInside = false;
+    bool isColliding = false;
+    bool willCollide = false;
+    if (!gameOver && fallSpeed != 0.0 && currentTime > lastFallTime + fallInterval)
     {
-        glm::vec3 tmp = curpos;
-        UnitCube cube(tmp, glm::vec3(1.0f, 1.0f, 1.0f));
-        tmp.y = tmp.y - 1.0f;
-        bool collide = false;
+        glm::vec3 tmp = curpos + glm::vec3(0.0f, -1.0f, 0.0f);
+        glm::vec3 tmp2 = curpos + glm::vec3(0.0f, -2.0f, 0.0f);
+        UnitCube cube(curpos, glm::vec3(1.0f, 1.0f, 1.0f));
+        UnitCube cube2(tmp, glm::vec3(1.0f, 1.0f, 1.0f));
+        UnitCube cube3(tmp2, glm::vec3(1.0f, 1.0f, 1.0f));
+
+        for (auto &relativeCubeCoordinates : unitCubePositions)
+        {
+            cube.pos = curpos + glm::vec3(relativeCubeCoordinates[0], relativeCubeCoordinates[1], relativeCubeCoordinates[2]);
+            cube2.pos = tmp + glm::vec3(relativeCubeCoordinates[0], relativeCubeCoordinates[1], relativeCubeCoordinates[2]);
+            cube3.pos = tmp2 + glm::vec3(relativeCubeCoordinates[0], relativeCubeCoordinates[1], relativeCubeCoordinates[2]);
+
+            if (cubeSet.find(cube) != cubeSet.end())
+            {
+                isInside = true;
+                break;
+            }
+
+            if (cubeSet.find(cube2) != cubeSet.end())
+            {
+                isColliding = true;
+            }
+            if (cubeSet.find(cube3) != cubeSet.end())
+            {
+                willCollide = true;
+            }
+        }
         if (curpos.y == 1.0)
         {
-            collide = true;
-            goto azd2;
+            willCollide = true;
+        }
+        if (isInside)
+        {
+            insertNewCubes(curpos);
+            gameOver = true;
         }
 
-        for (int x = 0; x < 3; ++x)
+        else if (isColliding || willCollide)
         {
+            if (isColliding)
 
-            for (int z = 0; z < 3; ++z)
-            {
-                if (cubeSet.find(cube) != cubeSet.end())
-                {
-                    collide = true;
-                    goto azd2;
-                }
-                cube.pos = tmp + glm::vec3(x, -1.0f, z);
-                if (cubeSet.find(cube) != cubeSet.end())
-                {
-                    collide = true;
-                    goto azd2;
-                }
-            }
-        }
-
-    azd2:
-        if (collide)
-        {
-            if (curpos.y != startpos.y)
-            {
-                insertNewCubes(tmp);
-            }
-            else
-            {
                 insertNewCubes(curpos);
-                gameOver = true;
-            }
-            curpos = startpos;
+            else
+                insertNewCubes(tmp);
+
             removeFullRows();
+            curpos = startpos;
         }
         else
         {
-            curpos = tmp;
+            curpos = curpos + glm::vec3(0.0f, -1.0f, 0.0f);
         }
+
         lastFallTime = currentTime;
     }
     float hor_scale = 0.005;
@@ -781,7 +812,7 @@ void display()
     int text_width = calculateTextWidth(score_string, score_scale);
     renderText("Score:" + score_string, gWidth * hor_scale + 500 - text_width, gHeight * hor_scale + 960, score_scale, glm::vec3(0, 1, 0));
     renderText(vievStrings[curRightVecIndex], gWidth * hor_scale, gHeight * hor_scale + 960, score_scale, glm::vec3(0, 1, 0));
-    if (!gameOver && currentTime < lastKeyPressTime + keyShowTime)
+    if (!currentTime < lastKeyPressTime + keyShowTime)
     {
         renderText(pressedKey, gWidth * hor_scale, gHeight * hor_scale + 920, 0.65, glm::vec3(0, 1, 1));
     }
@@ -884,14 +915,6 @@ void changeRotationTarget(double delta)
         currentRotation -= 360.0;
     }
 
-    float angleInRadians = glm::radians(delta);
-    glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), angleInRadians, glm::vec3(0.0f, 1.0f, 0.0f));
-    lightPos = glm::vec3(rotationMatrix * glm::vec4(lightPos, 0.0f));
-    glUseProgram(gProgram[0]);
-    glUniform3fv(lightPosLoc[0], 1, glm::value_ptr(lightPos));
-    glUseProgram(gProgram[1]);
-
-    glUniform3fv(lightPosLoc[1], 1, glm::value_ptr(lightPos));
     curRightVecIndex = delta > 0 ? (curRightVecIndex + 1) % 4 : (curRightVecIndex - 1 + 4) % 4;
 }
 void keyboard(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -907,11 +930,14 @@ void keyboard(GLFWwindow *window, int key, int scancode, int action, int mods)
         {
         case GLFW_KEY_A:
             pressedKey = "A";
-            moveBlock(rightVecs[curRightVecIndex] * -1.0f);
+            if (!gameOver)
+                moveBlock(rightVecs[curRightVecIndex] * -1.0f);
             break;
         case GLFW_KEY_D:
             pressedKey = "D";
-            moveBlock(rightVecs[curRightVecIndex]);
+            if (!gameOver)
+
+                moveBlock(rightVecs[curRightVecIndex]);
             break;
         case GLFW_KEY_S:
             pressedKey = "S";
@@ -953,6 +979,13 @@ void rotateCam(GLFWwindow *window)
 
     eyePos = glm::vec3(rotationMatrix * glm::vec4(eyePos, 1.0f));
 
+    lightPos = glm::vec3(rotationMatrix * glm::vec4(lightPos, 0.0f));
+    glUseProgram(gProgram[0]);
+    glUniform3fv(lightPosLoc[0], 1, glm::value_ptr(lightPos));
+    glUseProgram(gProgram[1]);
+
+    glUniform3fv(lightPosLoc[1], 1, glm::value_ptr(lightPos));
+
     reshape(window, gWidth, gHeight);
 }
 void mainLoop(GLFWwindow *window)
@@ -962,8 +995,8 @@ void mainLoop(GLFWwindow *window)
         lastRotation = currentTime;
         currentTime = glfwGetTime();
         deltaTime = currentTime - lastRotation;
-        if (!gameOver)
-            rotateCam(window);
+
+        rotateCam(window);
         display();
         glfwSwapBuffers(window);
         glfwPollEvents();
