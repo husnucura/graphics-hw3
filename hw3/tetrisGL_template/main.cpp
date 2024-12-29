@@ -165,6 +165,7 @@ double fallInterval = 1.0 / fallSpeed; // Time in seconds between falls
 int curRightVecIndex = 0;
 vector<glm::vec3> rightVecs = {glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)};
 vector<string> vievStrings = {"Front", "Right", "Back", "Left"};
+glm::vec3 zerovec = glm::vec3(0.0f, 0.0f, 0.0f);
 
 double currentTime = glfwGetTime();
 double lastFallTime = currentTime;
@@ -882,26 +883,11 @@ bool removeFullRows()
     }
     return res;
 }
-
-void display()
+bool handleCollision(glm::vec3 offset, bool instantly)
 {
-    glClearColor(0, 0, 0, 1);
-    glClearDepth(1.0f);
-    glClearStencil(0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-    drawCurrentBlocks();
-    if (!gameOver)
-    {
-        // drawNextShape(shapes[next_shape_index], startpos * 2.0f + glm ::vec3(1.5, 1.5, 1.5), 0.5);
-        drawNextShape(shapes[next_shape_index], startpos * 2.0f + glm ::vec3(1.5, 7.0, 1.5), 0.5);
-        drawCurrentShape(curpos);
-    }
-
-    drawFloor(floor_y_scale);
     isInside = false;
     isColliding = false;
-    glm::vec3 tmp = curpos + glm::vec3(0.0f, -1.0f, 0.0f);
+    glm::vec3 tmp = curpos + glm::vec3(0.0f, -1.0f, 0.0f) + offset;
     UnitCube cube(curpos, glm::vec3(1.0f, 1.0f, 1.0f));
     UnitCube cube2(tmp, glm::vec3(1.0f, 1.0f, 1.0f));
     if (!gameOver)
@@ -923,7 +909,7 @@ void display()
                 isColliding = true;
             }
         }
-        if (curpos.y == 0.0)
+        if (curpos.y + offset.y == 0.0)
         {
             isColliding = true;
         }
@@ -933,13 +919,13 @@ void display()
             gameOver = true;
         }
     }
-    if (!gameOver && fallSpeed != 0.0 && currentTime > lastFallTime + fallInterval)
+    if ((!gameOver && (instantly || (fallSpeed != 0.0 && currentTime > lastFallTime + fallInterval))))
     {
 
         if (isColliding)
         {
 
-            insertNewCubes(curpos);
+            insertNewCubes(curpos + offset);
 
             removeFullRows();
             curpos = startpos;
@@ -949,11 +935,32 @@ void display()
         }
         else
         {
-            curpos = curpos + glm::vec3(0.0f, -1.0f, 0.0f);
+            if (!instantly)
+                curpos = curpos + glm::vec3(0.0f, -1.0f, 0.0f);
         }
 
         lastFallTime = currentTime;
     }
+    return isColliding;
+}
+
+void display()
+{
+    glClearColor(0, 0, 0, 1);
+    glClearDepth(1.0f);
+    glClearStencil(0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+    drawCurrentBlocks();
+    if (!gameOver)
+    {
+        // drawNextShape(shapes[next_shape_index], startpos * 2.0f + glm ::vec3(1.5, 1.5, 1.5), 0.5);
+        drawNextShape(shapes[next_shape_index], startpos * 2.0f + glm ::vec3(1.5, 7.0, 1.5), 0.5);
+        drawCurrentShape(curpos);
+    }
+
+    drawFloor(floor_y_scale);
+    handleCollision(zerovec, false);
     float hor_scale = 0.005;
     string score_string = std::to_string(curScore);
     float score_scale = 0.65;
@@ -962,9 +969,9 @@ void display()
     renderText(vievStrings[curRightVecIndex], gWidth * hor_scale, gHeight * hor_scale + 960, score_scale, glm::vec3(0, 1, 0));
     if (currentTime < infoShowTime)
     {
-        renderText("press c and v keys for rotation around x and y axes,press z", 77 + gWidth * hor_scale, gHeight * hor_scale + 970, 0.3, glm::vec3(0, 1, 0));
-        renderText("press x for toggling the next shape", 77 + gWidth * hor_scale, gHeight * hor_scale + 957, 0.3, glm::vec3(0, 1, 0));
-        renderText("press z for enabling/disabling different shapes", 77 + gWidth * hor_scale, gHeight * hor_scale + 944, 0.3, glm::vec3(0, 1, 0));
+        renderText("press c and v keys for rotation around x and y axes,press z", 80 + gWidth * hor_scale, gHeight * hor_scale + 970, 0.3, glm::vec3(0, 1, 0));
+        renderText("press x for toggling the next shape,space for placing the shape instantly", 80 + gWidth * hor_scale, gHeight * hor_scale + 957, 0.3, glm::vec3(0, 1, 0));
+        renderText("press z for enabling/disabling different shapes", 80 + gWidth * hor_scale, gHeight * hor_scale + 944, 0.3, glm::vec3(0, 1, 0));
     }
     if (currentTime < lastKeyPressTime + keyShowTime)
     {
@@ -1004,7 +1011,8 @@ void reshape(GLFWwindow *window, int w, int h)
     }
 }
 
-inline bool checkInside(glm::vec3 &vec)
+inline bool
+checkInside(glm::vec3 &vec)
 {
     return vec.x >= 0.0f && vec.x < 9.0f && vec.z >= 0.0f && vec.z < 9.0f;
 }
@@ -1083,6 +1091,17 @@ void rotateCurrentShapeY()
         shapes[cur_shape_index] = nShape;
     }
 }
+void handleSpaceKey()
+{
+    int azd_ehe = curpos.y;
+    for (int i = 0; i <= azd_ehe; i++)
+    {
+        if (handleCollision(glm::vec3(0.0f, (GLfloat)(-i), 0.0f), true))
+        {
+            return;
+        }
+    }
+}
 void keyboard(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     if ((key == GLFW_KEY_Q || key == GLFW_KEY_ESCAPE) && action == GLFW_PRESS)
@@ -1137,9 +1156,14 @@ void keyboard(GLFWwindow *window, int key, int scancode, int action, int mods)
             next_shape_index = chooseNextShapeIndex();
             break;
         case GLFW_KEY_Z:
-            pressedKey = 'Z';
+            pressedKey = "Z";
             differentShapesEnabled = !differentShapesEnabled;
             next_shape_index = chooseNextShapeIndex();
+            break;
+        case GLFW_KEY_SPACE:
+            pressedKey = "Space";
+            handleSpaceKey();
+            break;
         default:
             lastKeyPressTime = tmpPresstime;
             break;
