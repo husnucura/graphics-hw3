@@ -91,6 +91,65 @@ struct UnitCube
         return pos.z < other.pos.z;
     }
 };
+struct Shape
+{
+    std::vector<glm::vec3> relativeCoordinates;
+    Shape(const std::vector<glm::vec3> &coords) : relativeCoordinates(coords) {}
+    std::vector<glm::vec3> rotateAroundYaxis90()
+    {
+        glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+        std::vector<glm::vec3> tmpVector;
+        for (auto &coord : relativeCoordinates)
+        {
+            glm::vec4 rotated = rotationMatrix * glm::vec4(coord, 1.0f);
+            tmpVector.push_back(glm::vec3(std::round(rotated.x), std::round(rotated.y), std::round(rotated.z)));
+        }
+
+        alignCoordinates(tmpVector);
+        return tmpVector;
+    }
+
+    std::vector<glm::vec3> rotateAroundXaxisNegative90()
+    {
+        glm::mat4 rotationMatrix = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+
+        std::vector<glm::vec3> tmpVector;
+
+        for (auto &coord : relativeCoordinates)
+        {
+            glm::vec4 rotated = rotationMatrix * glm::vec4(coord, 1.0f);
+            tmpVector.push_back(glm::vec3(std::round(rotated.x), std::round(rotated.y), std::round(rotated.z)));
+        }
+
+        alignCoordinates(tmpVector);
+
+        return tmpVector;
+    }
+
+private:
+    void alignCoordinates(std::vector<glm::vec3> &coordinates)
+    {
+        float minX = std::numeric_limits<float>::max();
+        float minY = std::numeric_limits<float>::max();
+        float minZ = std::numeric_limits<float>::max();
+
+        for (const auto &coord : coordinates)
+        {
+            minX = std::min(minX, coord.x);
+            minY = std::min(minY, coord.y);
+            minZ = std::min(minZ, coord.z);
+        }
+
+        for (auto &coord : coordinates)
+        {
+            coord.x -= minX;
+            coord.y -= minY;
+            coord.z -= minZ;
+        }
+    }
+};
+
 std::set<UnitCube> cubeSet; // all unit cubes except floor and current set of cubes we are placing
 int num_blocks = 15;
 float floor_pos = -8.0, floor_y_scale = 0.5;
@@ -99,7 +158,7 @@ const int gridSize = 9;
 const GLfloat cubeSize = 1.0f; // Assuming each cube has a size of 1 unit
 double offset = -cubeSize * (gridSize / 2);
 glm::vec3 curpos(3, 12, 3), startpos(3, 12, 3);
-double fallSpeed = 2.0f, minspeed = 0.0, maxSpeed = 2.0;
+double fallSpeed = 1.0f, minspeed = 0.0, maxSpeed = 2.0;
 double fallInterval = 1.0 / fallSpeed; // Time in seconds between falls
 
 // glm::vec3 rightVec(1.0f, 0.0f, 0.0f);
@@ -118,7 +177,46 @@ float targetRotation = 0.0f;  // Target rotation angle in degrees
 float rotationTime = 0.15f;
 int curScore = 0;
 bool gameOver = false;
+bool isInside = false;
+bool isColliding = false;
 string pressedKey = "H";
+std::vector<Shape> shapes = {
+    // Cube (3x3x3)
+    Shape({glm::vec3(0, 0, 0), glm::vec3(0, 0, 1), glm::vec3(0, 0, 2),
+           glm::vec3(0, 1, 0), glm::vec3(0, 1, 1), glm::vec3(0, 1, 2),
+           glm::vec3(0, 2, 0), glm::vec3(0, 2, 1), glm::vec3(0, 2, 2),
+
+           glm::vec3(1, 0, 0), glm::vec3(1, 0, 1), glm::vec3(1, 0, 2),
+           glm::vec3(1, 1, 0), glm::vec3(1, 1, 1), glm::vec3(1, 1, 2),
+           glm::vec3(1, 2, 0), glm::vec3(1, 2, 1), glm::vec3(1, 2, 2),
+
+           glm::vec3(2, 0, 0), glm::vec3(2, 0, 1), glm::vec3(2, 0, 2),
+           glm::vec3(2, 1, 0), glm::vec3(2, 1, 1), glm::vec3(2, 1, 2),
+           glm::vec3(2, 2, 0), glm::vec3(2, 2, 1), glm::vec3(2, 2, 2)}),
+
+    // Z Shape
+    Shape({glm::vec3(0, 0, 0), glm::vec3(0, 0, 1),
+           glm::vec3(1, 0, 1), glm::vec3(1, 0, 2)}),
+
+    // L Shape
+    Shape({glm::vec3(0, 0, 0), glm::vec3(1, 0, 0),
+           glm::vec3(2, 0, 0), glm::vec3(2, 0, 1)}),
+
+    // I Shape
+    Shape({glm::vec3(0, 0, 0), glm::vec3(1, 0, 0), glm::vec3(2, 0, 0), glm::vec3(3, 0, 0)}),
+
+    // L with 3 blocks
+    Shape({glm::vec3(0, 0, 0), glm::vec3(1, 0, 0), glm::vec3(1, 0, 1)}),
+
+    // Single Block
+    Shape({glm::vec3(0, 0, 0)}),
+
+    // 3x3 Square
+    Shape({glm::vec3(0, 0, 0), glm::vec3(0, 0, 1), glm::vec3(0, 0, 2),
+           glm::vec3(1, 0, 0), glm::vec3(1, 0, 1), glm::vec3(1, 0, 2),
+           glm::vec3(2, 0, 0), glm::vec3(2, 0, 1), glm::vec3(2, 0, 2)})};
+
+int cur_shape_index = 0;
 
 std::vector<std::vector<int>> unitCubePositions = {
     {0, 0, 0}, {0, 0, 1}, {0, 0, 2}, {0, 1, 0}, {0, 1, 1}, {0, 1, 2}, {0, 2, 0}, {0, 2, 1}, {0, 2, 2},
@@ -537,6 +635,18 @@ void drawUnitCube(const UnitCube &cube, const glm::mat4 &curModelingMatrix)
     drawCube();
     drawCubeEdges();
 }
+void drawCurrentShape(glm ::vec3 pos)
+{
+    modelingMatrix = getCurModelingMatrix();
+
+    for (auto &coordinates : shapes[cur_shape_index].relativeCoordinates)
+    {
+        UnitCube cube(glm::vec3(coordinates[0] + pos.x, coordinates[1] + pos.y, coordinates[2] + pos.z),
+                      glm::vec3(1, 1, 1));
+        drawUnitCube(cube, modelingMatrix);
+    }
+    updateModelingMatrixesInShaders(modelingMatrix);
+}
 void draw3x3x3CubeGrid(glm ::vec3 pos)
 {
     // 3x3x3 grid size
@@ -659,17 +769,11 @@ void renderText(const std::string &text, GLfloat x, GLfloat y, GLfloat scale, gl
 void insertNewCubes(glm::vec3 newpos)
 {
 
-    for (int x = 0; x < 3; x++)
+    for (auto &relaiveCoordinates : shapes[cur_shape_index].relativeCoordinates)
     {
-        for (int y = 0; y < 3; y++)
-        {
-            for (int z = 0; z < 3; z++)
-            {
-                UnitCube cube(glm::vec3(x + newpos.x, y + newpos.y, z + newpos.z),
-                              glm::vec3(1, 1, 1));
-                cubeSet.insert(cube);
-            }
-        }
+        UnitCube cube(glm::vec3(relaiveCoordinates[0] + newpos.x, relaiveCoordinates[1] + newpos.y, relaiveCoordinates[2] + newpos.z),
+                      glm::vec3(1, 1, 1));
+        cubeSet.insert(cube);
     }
 }
 void drawCurrentBlocks()
@@ -743,25 +847,21 @@ void display()
 
     drawCurrentBlocks();
     if (!gameOver)
-        draw3x3x3CubeGrid(curpos);
+        drawCurrentShape(curpos);
 
     drawFloor(floor_y_scale);
-    bool isInside = false;
-    bool isColliding = false;
-    bool willCollide = false;
-    if (!gameOver && fallSpeed != 0.0 && currentTime > lastFallTime + fallInterval)
+    isInside = false;
+    isColliding = false;
+    glm::vec3 tmp = curpos + glm::vec3(0.0f, -1.0f, 0.0f);
+    UnitCube cube(curpos, glm::vec3(1.0f, 1.0f, 1.0f));
+    UnitCube cube2(tmp, glm::vec3(1.0f, 1.0f, 1.0f));
+    if (!gameOver)
     {
-        glm::vec3 tmp = curpos + glm::vec3(0.0f, -1.0f, 0.0f);
-        glm::vec3 tmp2 = curpos + glm::vec3(0.0f, -2.0f, 0.0f);
-        UnitCube cube(curpos, glm::vec3(1.0f, 1.0f, 1.0f));
-        UnitCube cube2(tmp, glm::vec3(1.0f, 1.0f, 1.0f));
-        UnitCube cube3(tmp2, glm::vec3(1.0f, 1.0f, 1.0f));
 
-        for (auto &relativeCubeCoordinates : unitCubePositions)
+        for (auto &relativeCubeCoordinates : shapes[cur_shape_index].relativeCoordinates)
         {
             cube.pos = curpos + glm::vec3(relativeCubeCoordinates[0], relativeCubeCoordinates[1], relativeCubeCoordinates[2]);
             cube2.pos = tmp + glm::vec3(relativeCubeCoordinates[0], relativeCubeCoordinates[1], relativeCubeCoordinates[2]);
-            cube3.pos = tmp2 + glm::vec3(relativeCubeCoordinates[0], relativeCubeCoordinates[1], relativeCubeCoordinates[2]);
 
             if (cubeSet.find(cube) != cubeSet.end())
             {
@@ -773,31 +873,28 @@ void display()
             {
                 isColliding = true;
             }
-            if (cubeSet.find(cube3) != cubeSet.end())
-            {
-                willCollide = true;
-            }
         }
-        if (curpos.y == 1.0)
+        if (curpos.y == 0.0)
         {
-            willCollide = true;
+            isColliding = true;
         }
         if (isInside)
         {
             insertNewCubes(curpos);
             gameOver = true;
         }
+    }
+    if (!gameOver && fallSpeed != 0.0 && currentTime > lastFallTime + fallInterval)
+    {
 
-        else if (isColliding || willCollide)
+        if (isColliding)
         {
-            if (isColliding)
 
-                insertNewCubes(curpos);
-            else
-                insertNewCubes(tmp);
+            insertNewCubes(curpos);
 
             removeFullRows();
             curpos = startpos;
+            cur_shape_index = random() % shapes.size();
         }
         else
         {
@@ -811,7 +908,7 @@ void display()
     float score_scale = 0.65;
     int text_width = calculateTextWidth(score_string, score_scale);
     renderText("Score:" + score_string, gWidth * hor_scale + 500 - text_width, gHeight * hor_scale + 960, score_scale, glm::vec3(0, 1, 0));
-    renderText(vievStrings[curRightVecIndex], gWidth * hor_scale, gHeight * hor_scale + 960, score_scale, glm::vec3(0, 1, 0));
+    renderText(vievStrings[curRightVecIndex] + "Press Azd", gWidth * hor_scale, gHeight * hor_scale + 960, score_scale, glm::vec3(0, 1, 0));
     if (!currentTime < lastKeyPressTime + keyShowTime)
     {
         renderText(pressedKey, gWidth * hor_scale, gHeight * hor_scale + 920, 0.65, glm::vec3(0, 1, 1));
@@ -850,38 +947,31 @@ void reshape(GLFWwindow *window, int w, int h)
     }
 }
 
-inline bool check3x3inside(glm::vec3 &vec)
+inline bool checkInside(glm::vec3 &vec)
 {
-    return vec.x >= 0.0f && vec.x < 7.0f && vec.z >= 0.0f && vec.z < 7.0f;
+    return vec.x >= 0.0f && vec.x < 9.0f && vec.z >= 0.0f && vec.z < 9.0f;
+}
+bool checkShapeInside(Shape &s, glm::vec3 &pos)
+{
+    UnitCube cube(pos, glm::vec3(1, 1, 1));
+    bool flag = true;
+
+    for (auto &relativeCoordinates : s.relativeCoordinates)
+    {
+        cube.pos = pos + glm::vec3(relativeCoordinates[0], relativeCoordinates[1], relativeCoordinates[2]);
+        if (!checkInside(cube.pos) || cubeSet.find(cube) != cubeSet.end())
+        {
+            flag = false;
+            break;
+        }
+    }
+    return flag;
 }
 void moveBlock(glm::vec3 delta)
 
 {
     glm::vec3 tmp = curpos + delta;
-    UnitCube cube(tmp, glm::vec3(1, 1, 1));
-    bool flag = true;
-    if (!check3x3inside(tmp))
-    {
-        flag = false;
-        goto azd;
-    }
-    for (int x = 0; x < 3; ++x)
-    {
-        for (int y = 0; y < 3; ++y)
-        {
-            for (int z = 0; z < 3; ++z)
-            {
-                cube.pos = tmp + glm::vec3(x, y, z);
-                if (cubeSet.find(cube) != cubeSet.end())
-                {
-                    flag = false;
-                    goto azd;
-                }
-            }
-        }
-    }
-azd:
-    if (flag)
+    if (checkShapeInside(shapes[cur_shape_index], tmp))
     {
         curpos = tmp;
     }
@@ -916,6 +1006,25 @@ void changeRotationTarget(double delta)
     }
 
     curRightVecIndex = delta > 0 ? (curRightVecIndex + 1) % 4 : (curRightVecIndex - 1 + 4) % 4;
+}
+void rotateCurrentShapeX()
+{
+    auto rotated = shapes[cur_shape_index].rotateAroundXaxisNegative90();
+    Shape nShape = Shape(rotated);
+    if (checkShapeInside(nShape, curpos))
+    {
+        shapes[cur_shape_index] = nShape;
+    }
+}
+void rotateCurrentShapeY()
+{
+    auto rotated = shapes[cur_shape_index].rotateAroundYaxis90();
+
+    Shape nShape = Shape(rotated);
+    if (checkShapeInside(nShape, curpos))
+    {
+        shapes[cur_shape_index] = nShape;
+    }
 }
 void keyboard(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
@@ -954,6 +1063,16 @@ void keyboard(GLFWwindow *window, int key, int scancode, int action, int mods)
         case GLFW_KEY_K:
             pressedKey = "K";
             changeRotationTarget(90.0);
+            break;
+        case GLFW_KEY_V:
+            pressedKey = "V";
+            if (!gameOver)
+                rotateCurrentShapeX();
+            break;
+        case GLFW_KEY_C:
+            pressedKey = "C";
+            if (!gameOver)
+                rotateCurrentShapeY();
             break;
         default:
             break; // Ignore other keys
@@ -1005,6 +1124,7 @@ void mainLoop(GLFWwindow *window)
 
 int main(int argc, char **argv) // Create Main Function For Bringing It All Together
 {
+
     GLFWwindow *window;
     if (!glfwInit())
     {
