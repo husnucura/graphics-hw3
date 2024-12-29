@@ -51,7 +51,7 @@ GLint kdLoc[2];
 glm::mat4 projectionMatrix;
 glm::mat4 viewingMatrix;
 glm::mat4 modelingMatrix = glm::translate(glm::mat4(1.f), glm::vec3(-0.5, -0.5, -0.5));
-glm::vec3 eyePos = glm::vec3(0, 0, 24);
+glm::vec3 eyePos = glm::vec3(0, 0, 25);
 
 glm::vec3 lightPos = glm::vec3(0, 0, 7);
 
@@ -171,7 +171,8 @@ double lastFallTime = currentTime;
 double lastRotation = currentTime;
 double deltaTime;
 double keyShowTime = 0.2f;
-double lastKeyPressTime = 0.0;
+double lastKeyPressTime = -31.0;
+double infoShowTime = currentTime + 10;
 float currentRotation = 0.0f; // Current rotation angle in degrees
 float targetRotation = 0.0f;  // Target rotation angle in degrees
 float rotationTime = 0.15f;
@@ -179,6 +180,7 @@ int curScore = 0;
 bool gameOver = false;
 bool isInside = false;
 bool isColliding = false;
+bool differentShapesEnabled = true;
 string pressedKey = "H";
 std::vector<Shape> shapes = {
     // Cube (3x3x3)
@@ -894,7 +896,10 @@ void display()
 
             removeFullRows();
             curpos = startpos;
-            cur_shape_index = random() % shapes.size();
+            if (differentShapesEnabled)
+                cur_shape_index = random() % shapes.size();
+            else
+                cur_shape_index = 0;
         }
         else
         {
@@ -908,8 +913,13 @@ void display()
     float score_scale = 0.65;
     int text_width = calculateTextWidth(score_string, score_scale);
     renderText("Score:" + score_string, gWidth * hor_scale + 500 - text_width, gHeight * hor_scale + 960, score_scale, glm::vec3(0, 1, 0));
-    renderText(vievStrings[curRightVecIndex] + "Press Azd", gWidth * hor_scale, gHeight * hor_scale + 960, score_scale, glm::vec3(0, 1, 0));
-    if (!currentTime < lastKeyPressTime + keyShowTime)
+    renderText(vievStrings[curRightVecIndex], gWidth * hor_scale, gHeight * hor_scale + 960, score_scale, glm::vec3(0, 1, 0));
+    if (currentTime < infoShowTime)
+    {
+        renderText("press c and v keys for rotation around x and y axes,press z", 75 + gWidth * hor_scale, gHeight * hor_scale + 970, 0.3, glm::vec3(0, 1, 1));
+        renderText("press z for toggling different shapes enabled on/off", 75 + gWidth * hor_scale, gHeight * hor_scale + 950, 0.3, glm::vec3(0, 1, 1));
+    }
+    if (currentTime < lastKeyPressTime + keyShowTime)
     {
         renderText(pressedKey, gWidth * hor_scale, gHeight * hor_scale + 920, 0.65, glm::vec3(0, 1, 1));
     }
@@ -1034,6 +1044,7 @@ void keyboard(GLFWwindow *window, int key, int scancode, int action, int mods)
     }
     if (action == GLFW_PRESS || action == GLFW_REPEAT)
     {
+        auto tmpPresstime = lastKeyPressTime;
         lastKeyPressTime = currentTime;
         switch (key)
         {
@@ -1067,14 +1078,20 @@ void keyboard(GLFWwindow *window, int key, int scancode, int action, int mods)
         case GLFW_KEY_V:
             pressedKey = "V";
             if (!gameOver)
-                rotateCurrentShapeX();
+                rotateCurrentShapeY();
             break;
         case GLFW_KEY_C:
             pressedKey = "C";
             if (!gameOver)
-                rotateCurrentShapeY();
+                rotateCurrentShapeX();
+            break;
+        case GLFW_KEY_Z:
+            pressedKey = "Z";
+
+            differentShapesEnabled = !differentShapesEnabled;
             break;
         default:
+            lastKeyPressTime = tmpPresstime;
             break; // Ignore other keys
         }
     }
