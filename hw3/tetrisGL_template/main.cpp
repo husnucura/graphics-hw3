@@ -219,6 +219,7 @@ std::vector<Shape> shapes = {
            glm::vec3(2, 0, 0), glm::vec3(2, 0, 1), glm::vec3(2, 0, 2)})};
 
 int cur_shape_index = 0;
+int next_shape_index = 1;
 
 std::vector<std::vector<int>> unitCubePositions = {
     {0, 0, 0}, {0, 0, 1}, {0, 0, 2}, {0, 1, 0}, {0, 1, 1}, {0, 1, 2}, {0, 2, 0}, {0, 2, 1}, {0, 2, 2},
@@ -244,11 +245,11 @@ std::vector<std::vector<int>> unitCubePositions = {
     {2, 2, 2}};
 
 glm::mat4
-getModelingMatrix(const glm::mat4 &baseMatrix, const UnitCube &unitCube, float cubeSize)
+getModelingMatrix(const glm::mat4 &baseMatrix, const UnitCube &unitCube, glm::vec3 cubeScale)
 {
     glm::mat4 modelingMatrix = baseMatrix;
 
-    modelingMatrix = glm::translate(modelingMatrix, (unitCube.pos * cubeSize) + glm::vec3(offset, zeroYvalue, offset));
+    modelingMatrix = glm::translate(modelingMatrix, (unitCube.pos * cubeScale) + glm::vec3(offset, zeroYvalue, offset));
 
     modelingMatrix = glm::scale(modelingMatrix, unitCube.scale);
 
@@ -627,7 +628,7 @@ void drawUnitCube(const UnitCube &cube, const glm::mat4 &curModelingMatrix)
     // Base modeling matrix
     glm::mat4 baseMatrix = curModelingMatrix;
 
-    glm::mat4 modelingMatrix = getModelingMatrix(baseMatrix, cube, cubeSize);
+    glm::mat4 modelingMatrix = getModelingMatrix(baseMatrix, cube, cube.scale);
 
     assert(glGetError() == GL_NO_ERROR);
     // Send the modeling matrix to the shader
@@ -648,6 +649,48 @@ void drawCurrentShape(glm ::vec3 pos)
         drawUnitCube(cube, modelingMatrix);
     }
     updateModelingMatrixesInShaders(modelingMatrix);
+}
+void drawNextShape(Shape &shape, glm::vec3 offset, float scale)
+{
+
+    GLfloat matrixValues[16];
+    glUseProgram(gProgram[0]);
+    glGetUniformfv(gProgram[0], modelingMatrixLoc[0], matrixValues);
+    glm::mat4 tmpModelingMat = glm::make_mat4(matrixValues);
+
+    // Base modeling matrix
+    glm::mat4 baseMatrix = modelingMatrix;
+
+    glUseProgram(gProgram[0]);
+    glUniform3fv(kdLoc[0], 1, glm::value_ptr(kdFloor));
+    // Iterate through the grid and draw each cube
+
+    for (auto &relativePosition : shape.relativeCoordinates)
+    {
+
+        UnitCube cube(offset + glm::vec3(relativePosition[0], relativePosition[1], relativePosition[2]),
+                      glm::vec3(scale, scale, scale));
+        glm::mat4 modelingMatrix = getModelingMatrix(baseMatrix, cube, glm::vec3(scale, scale, scale));
+
+        assert(glGetError() == GL_NO_ERROR);
+        // Send the modeling matrix to the shader
+        updateModelingMatrixesInShaders(modelingMatrix);
+
+        // Draw the cube and its edges
+        drawCube();
+        drawCubeEdges();
+    }
+
+    glUseProgram(gProgram[0]);
+    glUniform3fv(kdLoc[0], 1, glm::value_ptr(kdCubes));
+    updateModelingMatrixesInShaders(tmpModelingMat);
+}
+int chooseNextShapeIndex()
+{
+    if (!differentShapesEnabled)
+        return 0;
+    return (next_shape_index + 1) % shapes.size();
+    return random() % shapes.size();
 }
 void draw3x3x3CubeGrid(glm ::vec3 pos)
 {
@@ -695,7 +738,7 @@ void drawFloor(float floor_y_scale)
 
             UnitCube cube(glm::vec3(x, -0.5, z),
                           glm::vec3(1.0, floor_y_scale, 1.0));
-            glm::mat4 modelingMatrix = getModelingMatrix(baseMatrix, cube, cubeSize);
+            glm::mat4 modelingMatrix = getModelingMatrix(baseMatrix, cube, glm::vec3(1.0f, 1.0f, 1.0f));
 
             assert(glGetError() == GL_NO_ERROR);
             // Send the modeling matrix to the shader
@@ -849,7 +892,11 @@ void display()
 
     drawCurrentBlocks();
     if (!gameOver)
+    {
+        // drawNextShape(shapes[next_shape_index], startpos * 2.0f + glm ::vec3(1.5, 1.5, 1.5), 0.5);
+        drawNextShape(shapes[next_shape_index], startpos * 2.0f + glm ::vec3(1.5, 7.0, 1.5), 0.5);
         drawCurrentShape(curpos);
+    }
 
     drawFloor(floor_y_scale);
     isInside = false;
@@ -896,10 +943,9 @@ void display()
 
             removeFullRows();
             curpos = startpos;
-            if (differentShapesEnabled)
-                cur_shape_index = random() % shapes.size();
-            else
-                cur_shape_index = 0;
+
+            cur_shape_index = next_shape_index;
+            next_shape_index = chooseNextShapeIndex();
         }
         else
         {
@@ -916,8 +962,9 @@ void display()
     renderText(vievStrings[curRightVecIndex], gWidth * hor_scale, gHeight * hor_scale + 960, score_scale, glm::vec3(0, 1, 0));
     if (currentTime < infoShowTime)
     {
-        renderText("press c and v keys for rotation around x and y axes,press z", 75 + gWidth * hor_scale, gHeight * hor_scale + 970, 0.3, glm::vec3(0, 1, 1));
-        renderText("press z for toggling different shapes enabled on/off", 75 + gWidth * hor_scale, gHeight * hor_scale + 950, 0.3, glm::vec3(0, 1, 1));
+        renderText("press c and v keys for rotation around x and y axes,press z", 77 + gWidth * hor_scale, gHeight * hor_scale + 970, 0.3, glm::vec3(0, 1, 0));
+        renderText("press x for toggling the next shape", 77 + gWidth * hor_scale, gHeight * hor_scale + 957, 0.3, glm::vec3(0, 1, 0));
+        renderText("press z for enabling/disabling different shapes", 77 + gWidth * hor_scale, gHeight * hor_scale + 944, 0.3, glm::vec3(0, 1, 0));
     }
     if (currentTime < lastKeyPressTime + keyShowTime)
     {
@@ -1085,14 +1132,17 @@ void keyboard(GLFWwindow *window, int key, int scancode, int action, int mods)
             if (!gameOver)
                 rotateCurrentShapeX();
             break;
-        case GLFW_KEY_Z:
-            pressedKey = "Z";
-
-            differentShapesEnabled = !differentShapesEnabled;
+        case GLFW_KEY_X:
+            pressedKey = "X";
+            next_shape_index = chooseNextShapeIndex();
             break;
+        case GLFW_KEY_Z:
+            pressedKey = 'Z';
+            differentShapesEnabled = !differentShapesEnabled;
+            next_shape_index = chooseNextShapeIndex();
         default:
             lastKeyPressTime = tmpPresstime;
-            break; // Ignore other keys
+            break;
         }
     }
 }
