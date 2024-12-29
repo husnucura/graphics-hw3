@@ -970,8 +970,9 @@ void display()
     if (currentTime < infoShowTime)
     {
         renderText("press c and v keys for rotation around x and y axes,press z", 80 + gWidth * hor_scale, gHeight * hor_scale + 970, 0.3, glm::vec3(0, 1, 0));
-        renderText("press x for toggling the next shape,space for placing the shape instantly", 80 + gWidth * hor_scale, gHeight * hor_scale + 957, 0.3, glm::vec3(0, 1, 0));
+        renderText("press x for toggling the next shape", 80 + gWidth * hor_scale, gHeight * hor_scale + 957, 0.3, glm::vec3(0, 1, 0));
         renderText("press z for enabling/disabling different shapes", 80 + gWidth * hor_scale, gHeight * hor_scale + 944, 0.3, glm::vec3(0, 1, 0));
+        renderText("press space for placing the shape instantly", 80 + gWidth * hor_scale, gHeight * hor_scale + 931, 0.3, glm::vec3(0, 1, 0));
     }
     if (currentTime < lastKeyPressTime + keyShowTime)
     {
