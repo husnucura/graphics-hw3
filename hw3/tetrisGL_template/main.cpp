@@ -51,7 +51,7 @@ GLint kdLoc[2];
 glm::mat4 projectionMatrix;
 glm::mat4 viewingMatrix;
 glm::mat4 modelingMatrix = glm::translate(glm::mat4(1.f), glm::vec3(-0.5, -0.5, -0.5));
-glm::vec3 eyePos = glm::vec3(0, 0, 25);
+glm::vec3 eyePos = glm::vec3(0, 10, 26);
 
 glm::vec3 lightPos = glm::vec3(0, 0, 7);
 
@@ -157,7 +157,7 @@ float zeroYvalue = floor_pos + 2 + (floor_y_scale - 1);
 const int gridSize = 9;
 const GLfloat cubeSize = 1.0f; // Assuming each cube has a size of 1 unit
 double offset = -cubeSize * (gridSize / 2);
-glm::vec3 curpos(3, 12, 3), startpos(3, 12, 3);
+glm::vec3 curpos(3, 12, 3), startpos(3, 15, 3);
 double fallSpeed = 1.0f, minspeed = 0.0, maxSpeed = 2.0;
 double fallInterval = 1.0 / fallSpeed; // Time in seconds between falls
 
@@ -954,8 +954,8 @@ void display()
     drawCurrentBlocks();
     if (!gameOver)
     {
-        // drawNextShape(shapes[next_shape_index], startpos * 2.0f + glm ::vec3(1.5, 1.5, 1.5), 0.5);
-        drawNextShape(shapes[next_shape_index], startpos * 2.0f + glm ::vec3(1.5, 7.0, 1.5), 0.5);
+        drawNextShape(shapes[next_shape_index], startpos * 2.f + glm ::vec3(1.5, 3.0, 1.5), 0.5);
+        //drawNextShape(shapes[next_shape_index], startpos , 1);
         drawCurrentShape(curpos);
     }
 
@@ -969,10 +969,10 @@ void display()
     renderText(vievStrings[curRightVecIndex], gWidth * hor_scale, gHeight * hor_scale + 960, score_scale, glm::vec3(0, 1, 0));
     if (currentTime < infoShowTime)
     {
-        renderText("press c and v keys for rotation around x and y axes,press z", 80 + gWidth * hor_scale, gHeight * hor_scale + 970, 0.3, glm::vec3(0, 1, 0));
-        renderText("press x for toggling the next shape", 80 + gWidth * hor_scale, gHeight * hor_scale + 957, 0.3, glm::vec3(0, 1, 0));
-        renderText("press z for enabling/disabling different shapes", 80 + gWidth * hor_scale, gHeight * hor_scale + 944, 0.3, glm::vec3(0, 1, 0));
-        renderText("press space for placing the shape instantly", 80 + gWidth * hor_scale, gHeight * hor_scale + 931, 0.3, glm::vec3(0, 1, 0));
+        renderText("Press c and v keys for rotation around x and y axes,press z", 80 + gWidth * hor_scale, gHeight * hor_scale + 964, 0.3, glm::vec3(0, 1, 0));
+        renderText("Press z for enabling/disabling different shapes", 80 + gWidth * hor_scale, gHeight * hor_scale + 964-16, 0.3, glm::vec3(0, 1, 0));
+        renderText("Press x for toggling the next shape", 80 + gWidth * hor_scale, gHeight * hor_scale + 964-32, 0.3, glm::vec3(0, 1, 0));
+        renderText("Press space for placing the shape instantly", 80 + gWidth * hor_scale, gHeight * hor_scale + 964-48, 0.3, glm::vec3(0, 1, 0));
     }
     if (currentTime < lastKeyPressTime + keyShowTime)
     {
@@ -1002,7 +1002,7 @@ void reshape(GLFWwindow *window, int w, int h)
     projectionMatrix = glm::perspective(fovyRad, gWidth / (float)gHeight, 1.0f, 100.0f);
 
     // always look toward (0, 0, 0)
-    viewingMatrix = glm::lookAt(eyePos, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+    viewingMatrix = glm::lookAt(eyePos, glm::vec3(0, 1, 0), glm::vec3(0, 1, 0));
 
     for (int i = 0; i < 2; ++i)
     {
