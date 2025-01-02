@@ -157,7 +157,7 @@ float zeroYvalue = floor_pos + 2 + (floor_y_scale - 1);
 const int gridSize = 9;
 const GLfloat cubeSize = 1.0f; // Assuming each cube has a size of 1 unit
 double offset = -cubeSize * (gridSize / 2);
-glm::vec3 curpos(3, 12, 3), startpos(3, 15, 3);
+glm::vec3 curpos(3, 12, 3), startpos(3, 12, 3);
 double fallSpeed = 1.0f, minspeed = 0.0, maxSpeed = 2.0;
 double fallInterval = 1.0 / fallSpeed; // Time in seconds between falls
 
@@ -954,33 +954,32 @@ void display()
     drawCurrentBlocks();
     if (!gameOver)
     {
-        drawNextShape(shapes[next_shape_index], startpos * 2.f + glm ::vec3(1.5, 3.0, 1.5), 0.5);
-        //drawNextShape(shapes[next_shape_index], startpos , 1);
+        // drawNextShape(shapes[next_shape_index], startpos * 2.0f + glm ::vec3(1.5, 1.5, 1.5), 0.5);
+        drawNextShape(shapes[next_shape_index], startpos * 2.0f + glm ::vec3(1.5, 7.0, 1.5), 0.5);
         drawCurrentShape(curpos);
     }
 
     drawFloor(floor_y_scale);
     handleCollision(zerovec, false);
-    float hor_scale = 0.005;
-    string score_string = std::to_string(curScore);
+    string score_string = "Score:" + std::to_string(curScore);
     float score_scale = 0.65;
     int text_width = calculateTextWidth(score_string, score_scale);
-    renderText("Score:" + score_string, gWidth * hor_scale + 500 - text_width, gHeight * hor_scale + 960, score_scale, glm::vec3(0, 1, 0));
-    renderText(vievStrings[curRightVecIndex], gWidth * hor_scale, gHeight * hor_scale + 960, score_scale, glm::vec3(0, 1, 0));
+    renderText(score_string, gWidth - text_width, gHeight - 24, score_scale, glm::vec3(0, 1, 0));
+    renderText(vievStrings[curRightVecIndex], 0.0f, gHeight - 24, score_scale, glm::vec3(0, 1, 0));
     if (currentTime < infoShowTime)
     {
-        renderText("Press c and v keys for rotation around x and y axes,press z", 80 + gWidth * hor_scale, gHeight * hor_scale + 964, 0.3, glm::vec3(0, 1, 0));
-        renderText("Press z for enabling/disabling different shapes", 80 + gWidth * hor_scale, gHeight * hor_scale + 964-16, 0.3, glm::vec3(0, 1, 0));
-        renderText("Press x for toggling the next shape", 80 + gWidth * hor_scale, gHeight * hor_scale + 964-32, 0.3, glm::vec3(0, 1, 0));
-        renderText("Press space for placing the shape instantly", 80 + gWidth * hor_scale, gHeight * hor_scale + 964-48, 0.3, glm::vec3(0, 1, 0));
+        renderText("press c and v keys for rotation around x and y axes", 85, gHeight - 24, 0.3, glm::vec3(0, 1, 0));
+        renderText("press x for toggling the next shape", 85, gHeight - 44, 0.3, glm::vec3(0, 1, 0));
+        renderText("press z for enabling/disabling different shapes", 85, gHeight - 64, 0.3, glm::vec3(0, 1, 0));
+        renderText("press space for placing the shape instantly", 85, gHeight - 84, 0.3, glm::vec3(0, 1, 0));
     }
     if (currentTime < lastKeyPressTime + keyShowTime)
     {
-        renderText(pressedKey, gWidth * hor_scale, gHeight * hor_scale + 920, 0.65, glm::vec3(0, 1, 1));
+        renderText(pressedKey, 0.0f, gHeight - 50, 0.65, glm::vec3(0, 1, 1));
     }
     if (gameOver)
     {
-        renderText("GAME OVER!", gWidth * hor_scale + 120, gHeight * hor_scale + 450, 1.31, glm::vec3(0.52, 0.31, 0.69));
+        renderText("GAME OVER!", gWidth / 2.0 - gWidth / 3.0, gHeight / 2.0, 1.31, glm::vec3(0.52, 0.31, 0.69));
     }
 
     assert(glGetError() == GL_NO_ERROR);
@@ -1002,7 +1001,7 @@ void reshape(GLFWwindow *window, int w, int h)
     projectionMatrix = glm::perspective(fovyRad, gWidth / (float)gHeight, 1.0f, 100.0f);
 
     // always look toward (0, 0, 0)
-    viewingMatrix = glm::lookAt(eyePos, glm::vec3(0, 1, 0), glm::vec3(0, 1, 0));
+    viewingMatrix = glm::lookAt(eyePos, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
     for (int i = 0; i < 2; ++i)
     {
@@ -1010,6 +1009,9 @@ void reshape(GLFWwindow *window, int w, int h)
         glUniformMatrix4fv(projectionMatrixLoc[i], 1, GL_FALSE, glm::value_ptr(projectionMatrix));
         glUniformMatrix4fv(viewingMatrixLoc[i], 1, GL_FALSE, glm::value_ptr(viewingMatrix));
     }
+    glm::mat4 projection = glm::ortho(0.0f, static_cast<GLfloat>(gWidth), 0.0f, static_cast<GLfloat>(gHeight));
+    glUseProgram(gProgram[2]);
+    glUniformMatrix4fv(glGetUniformLocation(gProgram[2], "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 }
 
 inline bool
